@@ -75,3 +75,19 @@ This repository is structured for a multi-part blog series:
 - Part 1: Fat Controller → Minimal Clean Architecture + Article CRUD
 - Part 2: Like/Unlike with idempotent counter updates
 - Part 3: Pagination optimizations, sorting, metrics, and CI integration
+
+
+```bash
+curl localhost:8080/healthz
+```
+
+```bash
+curl "localhost:8080/articles?limit=5&offset=0&sort=new"
+```
+
+```bash
+curl -X POST localhost:8080/articles \
+  -H "Content-Type: application/json" \
+  -d '{"authorId":1,"title":"Hello","body":"First post"}'
+```
+
