@@ -83,6 +83,30 @@ func main() {
 		})
 	})
 
+	r.GET("/articles/:id", func(c *gin.Context) {
+		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			return
+		}
+
+		var a Article
+		if err := db.First(&a, id).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"id":        a.ID,
+			"authorId":  a.AuthorID,
+			"title":     a.Title,
+			"body":      a.Body,
+			"likeCount": a.LikeCount,
+			"createdAt": a.CreatedAt,
+			"updatedAt": a.UpdatedAt,
+		})
+	})
+
 	r.POST("/articles", func(c *gin.Context) {
 		var req struct {
 			AuthorID int64  `json:"authorId" binding:"required"`
