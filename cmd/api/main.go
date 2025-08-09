@@ -63,6 +63,8 @@ func main() {
 
 		q := db.Model(&Article{})
 		switch sort {
+		case "popular":
+			q = q.Order("like_count DESC").Order("id DESC")
 		case "new":
 			q = q.Order("created_at DESC").Order("id DESC")
 		default:
