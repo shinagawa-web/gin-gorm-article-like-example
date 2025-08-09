@@ -102,6 +102,60 @@ func main() {
 		c.JSON(http.StatusCreated, gin.H{"id": a.ID})
 	})
 
+	r.PUT("/articles/:id", func(c *gin.Context) {
+		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			return
+		}
+
+		var req struct {
+			Title string `json:"title" binding:"required"`
+			Body  string `json:"body" binding:"required"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+			return
+		}
+
+		var a Article
+		if err := db.First(&a, id).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
+		a.Title = req.Title
+		a.Body = req.Body
+		a.UpdatedAt = time.Now()
+
+		if err := db.Save(&a).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"id": a.ID, "authorId": a.AuthorID, "title": a.Title, "body": a.Body,
+			"likeCount": a.LikeCount, "createdAt": a.CreatedAt, "updatedAt": a.UpdatedAt,
+		})
+	})
+
+	r.DELETE("/articles/:id", func(c *gin.Context) {
+		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			return
+		}
+
+		res := db.Delete(&Article{}, id)
+		if res.Error != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete"})
+			return
+		}
+		if res.RowsAffected == 0 {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
+		c.Status(http.StatusNoContent)
+	})
+
 	log.Println("listening on :8080")
 	r.Run(":8080")
 }

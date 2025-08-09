@@ -76,14 +76,21 @@ This repository is structured for a multi-part blog series:
 - Part 2: Like/Unlike with idempotent counter updates
 - Part 3: Pagination optimizations, sorting, metrics, and CI integration
 
+## curl example
+
+### Health Check
 
 ```bash
 curl localhost:8080/healthz
 ```
 
+### Get
+
 ```bash
 curl "localhost:8080/articles?limit=5&offset=0&sort=new"
 ```
+
+### Post
 
 ```bash
 curl -X POST localhost:8080/articles \
@@ -91,3 +98,16 @@ curl -X POST localhost:8080/articles \
   -d '{"authorId":1,"title":"Hello","body":"First post"}'
 ```
 
+### Update
+
+```bash
+curl -X PUT localhost:8080/articles/1 \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Updated","body":"Updated body"}'
+```
+
+### Delete
+
+```bash
+curl -X DELETE localhost:8080/articles/1 -i
+```
