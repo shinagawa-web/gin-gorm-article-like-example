@@ -111,3 +111,15 @@ curl -X PUT localhost:8080/articles/1 \
 ```bash
 curl -X DELETE localhost:8080/articles/1 -i
 ```
+
+### Like
+
+```bash
+curl -X POST "localhost:8080/articles/1/like?userId=1" -i
+```
+
+### Unlike
+
+```bash
+curl -X DELETE "localhost:8080/articles/1/like?userId=1" -i
+```

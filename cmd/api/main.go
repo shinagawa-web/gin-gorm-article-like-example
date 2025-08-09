@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type Article struct {
@@ -19,6 +20,11 @@ type Article struct {
 	LikeCount int64     `gorm:"not null;default:0;index"`
 	CreatedAt time.Time `gorm:"not null;index"`
 	UpdatedAt time.Time `gorm:"not null;index"`
+}
+
+type Like struct {
+	UserID    int64 `gorm:"primaryKey"`
+	ArticleID int64 `gorm:"primaryKey;index"`
 }
 
 func main() {
@@ -34,7 +40,7 @@ func main() {
 	}
 	defer sqlDB.Close()
 
-	if err := db.AutoMigrate(&Article{}); err != nil {
+	if err := db.AutoMigrate(&Article{}, &Like{}); err != nil {
 		log.Fatal(err)
 	}
 
@@ -151,6 +157,76 @@ func main() {
 		}
 		if res.RowsAffected == 0 {
 			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
+		c.Status(http.StatusNoContent)
+	})
+
+	r.POST("/articles/:id/like", func(c *gin.Context) {
+		articleID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			return
+		}
+
+		userID, err := strconv.ParseInt(c.DefaultQuery("userId", "1"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid userId"})
+			return
+		}
+
+		if err := db.Transaction(func(tx *gorm.DB) error {
+			res := tx.Clauses(clause.OnConflict{DoNothing: true}).
+				Create(&Like{UserID: userID, ArticleID: articleID})
+			if res.Error != nil {
+				return res.Error
+			}
+
+			if res.RowsAffected > 0 {
+				if err := tx.Model(&Article{}).
+					Where("id = ?", articleID).
+					Update("like_count", gorm.Expr("like_count + ?", 1)).Error; err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to like"})
+			return
+		}
+		c.Status(http.StatusNoContent)
+	})
+
+	r.DELETE("/articles/:id/like", func(c *gin.Context) {
+		articleID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			return
+		}
+
+		userID, err := strconv.ParseInt(c.DefaultQuery("userId", "1"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid userId"})
+			return
+		}
+
+		if err := db.Transaction(func(tx *gorm.DB) error {
+			res := tx.Where("user_id = ? AND article_id = ?", userID, articleID).
+				Delete(&Like{})
+			if res.Error != nil {
+				return res.Error
+			}
+
+			if res.RowsAffected > 0 {
+				if err := tx.Model(&Article{}).
+					Where("id = ?", articleID).
+					Update("like_count", gorm.Expr("GREATEST(like_count - ?, 0)", 1)).Error; err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to unlike"})
 			return
 		}
 		c.Status(http.StatusNoContent)
